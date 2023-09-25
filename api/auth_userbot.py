@@ -33,11 +33,14 @@ async def get_code(body: GetCodeData):
         'username': f'{proxy[2]}',
         'password': f'{proxy[3]}'
     }
-    new_client = TelegramClient(session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
-    await new_client.connect()
-    code_hash = await new_client.send_code_request(phone=body.phone)
-    await new_client.disconnect()
-    return {'status':"ok", 'phone_code_hash': code_hash.phone_code_hash}
+    try:
+        new_client = TelegramClient(session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
+        await new_client.connect()
+        code_hash = await new_client.send_code_request(phone=body.phone)
+        await new_client.disconnect()
+        return {'status': "ok", 'phone_code_hash': code_hash.phone_code_hash}
+    except Exception as e:
+        return {'status': "error", 'description': e.args}
 
 @app.post("/auth_new_user")
 async def auth_new_user(body: AuthNewUserData):
@@ -49,13 +52,16 @@ async def auth_new_user(body: AuthNewUserData):
         'username': f'{proxy[2]}',
         'password': f'{proxy[3]}'
     }
-    new_client = TelegramClient(session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
-    await new_client.connect()
-    user = await new_client.sign_in(phone=body.phone, code=body.code, password=body.password, phone_code_hash=body.phone_code_hash)
-    database.add_record(Bot(phone=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=body.proxy, name=user.first_name, user_id=user.id))
-    # Запускаем нового бота
-    bot = UserBot(bot_id=user.id, session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=body.proxy)
-    asyncio.create_task(bot.client.start())
-    asyncio.create_task(bot.client.run_until_disconnected())
-    await new_client.disconnect()
-    return {"status": "ok"}
+    try:
+        new_client = TelegramClient(session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
+        await new_client.connect()
+        user = await new_client.sign_in(phone=body.phone, code=body.code, password=body.password, phone_code_hash=body.phone_code_hash)
+
+        database.add_record(Bot(phone=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=body.proxy, name=user.first_name, user_id=user.id))
+        # Запускаем нового бота
+        bot = UserBot(bot_id=user.id, session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=body.proxy)
+        asyncio.create_task(bot.client.start())
+        asyncio.create_task(bot.client.run_until_disconnected())
+        return {"status": "ok"}
+    except Exception as e:
+        return {'status': "failed", 'error': e.args}

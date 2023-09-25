@@ -4,7 +4,7 @@ services:
   app:
     build: .
     ports:
-      - "8000:8000" # Прокидываем порт FastAPI
+      - "10321:10321" # Прокидываем порт FastAPI
     depends_on:
       - db
     environment:

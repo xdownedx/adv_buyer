@@ -10,6 +10,7 @@ from telethon.events import NewMessage
 from telethon.types import Message
 import re
 import base64
+
 class UserBot:
     def __init__(self, session, api_id, api_hash, proxy, bot_id):
         proxy = proxy.split(":")
@@ -24,8 +25,6 @@ class UserBot:
         self.channels = []
         self.bot_id = bot_id
 
-        # Get all channels associated with this bot and add their ids to the list
-
     async def start(self):
         await self.client.connect()
         self.initialize_handlers()
@@ -36,16 +35,88 @@ class UserBot:
         except Exception as e:
             print(e)
             return None
+
+    async def sub_to_channel(self, url):
+        # Extracting the username, invite link or hash from the provided URL
+        match = re.search(r"(?:https://t\.me/joinchat/|https://t\.me/\+|https://t\.me/|@)?([a-zA-Z0-9_\-]+)", url)
+        if not match:
+            raise ValueError("Invalid channel URL")
+
+        channel_identifier = match.group(1)
+
+        try:
+            updates = await self.client(ImportChatInviteRequest(channel_identifier))
+            channel_entity = await self.client.get_entity(updates.chats[0].id if updates.chats else updates.users[0].id)
+        except UserAlreadyParticipantError:
+            channel_entity = await self.client.get_entity(url)
+            pass
+        except InviteRequestSentError:
+            return None
+        except Exception as e:
+            print(e)
+            try:
+                await self.client(JoinChannelRequest(channel=channel_identifier))
+                channel_entity = await self.client.get_entity(channel_identifier)
+            except Exception as e:
+                raise ValueError(f"Unable to join channel with identifier {channel_identifier}. Error: {str(e)}")
+
+        # Extracting relevant information from the channel entity
+        channel_info = {
+            "id": channel_entity.id,
+            "username": getattr(channel_entity, "username", None),
+            "title": getattr(channel_entity, "title", None),
+            "description": getattr(channel_entity, "description", None),
+        }
+
+        return channel_info
+
+    async def get_post_content(self, url):
+        parts = url.split('/')
+        channel = parts[-2]
+        message_id = int(parts[-1].split('?')[0])
+        message = await self.client.get_messages(channel, ids=message_id)
+
+        def extract_links(text: str):
+            url_pattern = re.compile(
+                r'\b(?:http|https)://\S+\b|(?<=\()\S+(?=\))'
+            )
+            return url_pattern.findall(text)
+        # Проверка наличия группы сообщений
+        related_messages = []
+
+        if message.grouped_id:
+            # Извлекаем 10 предыдущих и 10 следующих сообщений
+            surrounding_messages = await self.client.get_messages(channel, min_id=message_id - 10,
+                                                                  max_id=message_id + 10)
+
+            # Фильтруем сообщения с таким же grouped_id
+            related_messages.extend([msg for msg in surrounding_messages if msg.grouped_id == message.grouped_id])
+
+        if len(related_messages) == 0:
+            related_messages.append(message)
+        # Объединяем тексты сообщений
+        combined_text = "\\n".join(msg.text for msg in related_messages)
+
+        # Получение информации о медиа
+        media_info = [await self.extract_media_info(msg.media, extended=1) for msg in related_messages if msg.media]
+
+        # Форматирование сообщения для вывода
+        formatted_message = {
+            "id": message.id,
+            "date": message.date.strftime('%d.%m.%Y %H:%M:%S'),
+            "views": message.views or 0,
+            "link": f"t.me/{message.sender.username if message.sender.username else 'c/'+str(message.sender.id)}/{message.id}",
+            "channel_id": message.sender.id,
+            "forwarded_from": message.forward.from_id.channel_id if message.forward else None,
+            "is_deleted": 0 if combined_text else 1,
+            "text": combined_text,
+            "media": media_info,
+            "entities": extract_links(combined_text)
+        }
+        return formatted_message
+
     async def fetch_channel_history(self, channel_id, limit=100, offset_id=0, extended = 1):
         from loader import database
-        """
-        Fetches the message history of a channel.
-
-        :param channel_id: The ID of the channel to fetch the history from.
-        :param limit: The maximum number of messages to fetch.
-        :param offset_id: ID of the message to start fetching from.
-        :return: A list of message objects in the desired format.
-        """
         try:
             channel = await self.client.get_entity(channel_id)
             messages = await self.client.get_messages(channel, limit=limit, add_offset=limit*offset_id)
@@ -64,7 +135,7 @@ class UserBot:
                             "texts": [],
                             "medias": [],
                             "id": message.id,
-                            "date": message.date,
+                            "date": message.date.strftime('%d.%m.%Y %H:%M:%S'),
                             "views": message.views or 0,
                             "chat_id": message.chat_id,
                             "forwarded_from": message.forward.sender_id if message.forward else None,
@@ -74,8 +145,6 @@ class UserBot:
                         media_info = await self.extract_media_info(message.media, extended)
                         grouped_messages[grouped_id]["medias"].append(media_info)
                     continue
-
-                # Форматирование обычных сообщений
                 formatted_message = await self.format_message(message, extended)
                 formatted_messages.append(formatted_message)
 
@@ -84,24 +153,19 @@ class UserBot:
                     r'\b(?:http|https)://\S+\b|(?<=\()\S+(?=\))'
                 )
                 return url_pattern.findall(text)
-            # Форматирование объединенных сообщений альбома
             for grouped_id, grouped_message in grouped_messages.items():
                 formatted_message = {
-                    "item": {
                         "id": int(grouped_id),
-                        "date": int(grouped_message["date"].timestamp()),
+                        "date": grouped_message["date"],
                         "views": grouped_message["views"],
-                        "link": f"t.me/c/{grouped_message['chat_id']*(-1)-1000000000000}/{grouped_message['id']}",
-                        "forwarded_from": grouped_message["forwarded_from"],
+                        "link": f"t.me/{message.sender.username if message.sender.username else 'c/'+str(message.sender.id)}/{message.id}",
+                        "forwarded_from": message.forward.from_id.channel_id if message.forward else None,
                         "is_deleted": 0,
                         "text": "\n".join(grouped_message["texts"]),
                         "media": grouped_message["medias"],
                         "entities": extract_links("\n".join(grouped_message["texts"]))
-
-                    }
                 }
                 formatted_messages.append(formatted_message)
-
             return formatted_messages
         except Exception as e:
             print(f"Error fetching channel history: {e}")
@@ -125,18 +189,16 @@ class UserBot:
 
         # Форматирование сообщения
         formatted_message = {
-            "item": {
                 "id": message.id,
-                "date": int(message.date.timestamp()),
+                "date": message.date.strftime('%d.%m.%Y %H:%M:%S'),
                 "views": message.views or 0,
-                "link": f"t.me/c/{message.chat_id*(-1)-1000000000000}/{message.id}",
-                "channel_id": message.chat_id*(-1)-1000000000000,
-                "forwarded_from": message.forward.sender_id if message.forward else None,
+                "link": f"t.me/{message.sender.username if message.sender.username else 'c/'+str(message.sender.id)}/{message.id}",
+                "channel_id": message.sender.id,
+                "forwarded_from": message.forward.from_id.channel_id if message.forward else None,
                 "is_deleted": 0,
                 "text": message.text,
                 "media": await self.extract_media_info(message.media, extended=extended) if message.media else None,
                 "entities":extract_links(message.text)
-            }
         }
         return formatted_message
 
@@ -159,7 +221,6 @@ class UserBot:
                 return {"media_type": media_type, "caption": caption}
         else:
             return {"media_type": media_type, "caption": caption}
-
     def initialize_handlers(self):
         from loader import database
         channels = database.get_channels_by_bot_id(self.bot_id)
@@ -245,37 +306,4 @@ class UserBot:
         async def get_newwww(event):
             print(event)
 
-    async def sub_to_channel(self, url):
-        # Extracting the username, invite link or hash from the provided URL
-        match = re.search(r"(?:https://t\.me/joinchat/|https://t\.me/\+|https://t\.me/|@)?([a-zA-Z0-9_\-]+)", url)
-        if not match:
-            raise ValueError("Invalid channel URL")
-
-        channel_identifier = match.group(1)
-
-        try:
-            updates = await self.client(ImportChatInviteRequest(channel_identifier))
-            channel_entity = await self.client.get_entity(updates.chats[0].id if updates.chats else updates.users[0].id)
-        except UserAlreadyParticipantError:
-            channel_entity = await self.client.get_entity(url)
-            pass
-        except InviteRequestSentError:
-            return None
-        except Exception as e:
-            print(e)
-            try:
-                await self.client(JoinChannelRequest(channel=channel_identifier))
-                channel_entity = await self.client.get_entity(channel_identifier)
-            except Exception as e:
-                raise ValueError(f"Unable to join channel with identifier {channel_identifier}. Error: {str(e)}")
-
-        # Extracting relevant information from the channel entity
-        channel_info = {
-            "id": channel_entity.id,
-            "username": getattr(channel_entity, "username", None),
-            "title": getattr(channel_entity, "title", None),
-            "description": getattr(channel_entity, "description", None),
-        }
-
-        return channel_info
 

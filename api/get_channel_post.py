@@ -26,5 +26,5 @@ async def get_channel_posts(body: ChannelPost):
             return {"status":"ok",
                     "items":result}
 
-    return {"status":"error",
+    return {"status": "failed",
             "response": "channel not found"}

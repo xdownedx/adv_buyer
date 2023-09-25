@@ -8,9 +8,8 @@ from datetime import datetime
 @dataclass
 class ChannelURL:
     url: str
-
 @app.post("/add_new_channel")
-async def auth_new_channel(body: ChannelURL):
+async def add_new_channel(body: ChannelURL):
     # Initially checking if any bot already has access to the channel
     for bot_phone, bot in bots.items():
         channel_id = await bot.check_url(url=body.url)
