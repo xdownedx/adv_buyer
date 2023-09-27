@@ -9,14 +9,14 @@ services:
       - db
     environment:
       - PORT=10321
-      - PG_URL=postgresql://postgres:1q2w3e4r@db/monitoring
+      - PG_URL=postgresql://postgres:1q2w3e4r@db/monitoring1
 
   db:
     image: postgres:13
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=1q2w3e4r
-      - POSTGRES_DB=monitoring
+      - POSTGRES_DB=monitoring1
     volumes:
       - pgdata:/var/lib/postgresql/data
 

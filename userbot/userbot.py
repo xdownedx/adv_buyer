@@ -3,39 +3,74 @@ from database import Post, Media, Channel  # Импорт моделей ваш�
 from telethon import events
 import json
 from telethon import TelegramClient
-from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest
+from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest, GetFullChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
 from telethon.errors.rpcerrorlist import UserAlreadyParticipantError, InviteRequestSentError
 from telethon.events import NewMessage
 from telethon.types import Message
 import re
 import base64
-
+from .helpers import markdown_to_text
 class UserBot:
     def __init__(self, session, api_id, api_hash, proxy, bot_id):
         proxy = proxy.split(":")
-        proxy = {
+        self.proxy = {
             'proxy_type': 'socks5',
             'addr': f'{proxy[0]}',
             'port': int(proxy[1]),
             'username': f'{proxy[2]}',
             'password': f'{proxy[3]}'
         }
-        self.client = TelegramClient(session=session, api_id=api_id, api_hash=api_hash, proxy=proxy)
+        self.phone = session
+        self.client = TelegramClient(session=session, api_id=api_id, api_hash=api_hash, proxy=self.proxy)
         self.channels = []
         self.bot_id = bot_id
+        self.status = "ok"
+        self.request_count = 0
 
     async def start(self):
         await self.client.connect()
         self.initialize_handlers()
+        from database import Bot
+        from loader import database
+        """Increment the request count and manage the session directly."""
+        # Create a new session
+        session = database.Session()
+        bot_record = session.query(Bot).filter(Bot.phone == self.phone).first()
+        if bot_record:
+            bot_record.request_count += 1
+            self.request_count = bot_record.request_count
+
     async def check_url(self, url):
         try:
+            await self.increment_request_count()
             entity = await self.client.get_entity(url)
             return entity.id
-        except Exception as e:
-            print(e)
-            return None
+        except ValueError as e:
+            raise ValueError(f"Not found channel by '{url}'")
 
+    async def increment_request_count(self):
+        from database import Bot
+        from loader import database
+        """Increment the request count and manage the session directly."""
+        # Create a new session
+        session = database.Session()
+        bot_record = session.query(Bot).filter(Bot.phone == self.phone).first()
+        if bot_record:
+            bot_record.request_count += 1
+            self.request_count = bot_record.request_count
+            session.commit()
+        session.close()
+
+    async def get_userbot_status(self):
+        try:
+            me = await self.client.get_me()
+            if me:
+                return "ok"
+            else:
+                return "fail"
+        except:
+            return "fail"
     async def sub_to_channel(self, url):
         # Extracting the username, invite link or hash from the provided URL
         match = re.search(r"(?:https://t\.me/joinchat/|https://t\.me/\+|https://t\.me/|@)?([a-zA-Z0-9_\-]+)", url)
@@ -45,9 +80,11 @@ class UserBot:
         channel_identifier = match.group(1)
 
         try:
+            await self.increment_request_count()
             updates = await self.client(ImportChatInviteRequest(channel_identifier))
             channel_entity = await self.client.get_entity(updates.chats[0].id if updates.chats else updates.users[0].id)
         except UserAlreadyParticipantError:
+            await self.increment_request_count()
             channel_entity = await self.client.get_entity(url)
             pass
         except InviteRequestSentError:
@@ -55,6 +92,7 @@ class UserBot:
         except Exception as e:
             print(e)
             try:
+                await self.increment_request_count()
                 await self.client(JoinChannelRequest(channel=channel_identifier))
                 channel_entity = await self.client.get_entity(channel_identifier)
             except Exception as e:
@@ -72,10 +110,11 @@ class UserBot:
 
     async def get_post_content(self, url):
         parts = url.split('/')
-        channel = parts[-2]
+        channel = int(parts[-2]) if parts[-2].isdigit() else parts[-2]
         message_id = int(parts[-1].split('?')[0])
         message = await self.client.get_messages(channel, ids=message_id)
-
+        if not message:
+            raise ValueError("Post not found")
         def extract_links(text: str):
             url_pattern = re.compile(
                 r'\b(?:http|https)://\S+\b|(?<=\()\S+(?=\))'
@@ -86,6 +125,7 @@ class UserBot:
 
         if message.grouped_id:
             # Извлекаем 10 предыдущих и 10 следующих сообщений
+            await self.increment_request_count()
             surrounding_messages = await self.client.get_messages(channel, min_id=message_id - 10,
                                                                   max_id=message_id + 10)
 
@@ -109,19 +149,52 @@ class UserBot:
             "channel_id": message.sender.id,
             "forwarded_from": message.forward.from_id.channel_id if message.forward else None,
             "is_deleted": 0 if combined_text else 1,
-            "text": combined_text,
+            "text": markdown_to_text(combined_text),
             "media": media_info,
             "entities": extract_links(combined_text)
         }
         return formatted_message
 
+    async def get_channel_info(self, channel_link):
+        try:
+            # Fetching the channel entity
+            await self.increment_request_count()
+            await self.increment_request_count()
+
+            entity = await self.client.get_entity(channel_link)
+            full_channel = await self.client(GetFullChannelRequest(channel=entity))
+            # Constructing the channel info
+            channel_info = {
+                "id": entity.id,
+                "title": entity.title,
+                "about": full_channel.full_chat.about,
+                "link": f"t.me/{entity.username if entity.username else entity.id}",
+                "subscribers_count": full_channel.full_chat.participants_count,
+                "created_date": entity.date.strftime('%d.%m.%Y %H:%M:%S'),
+                "peer_type": "channel",
+                "username": f"@{entity.username}" if entity.username else None,
+                "active_usernames": [f"@{username for username in entity.usernames}"] if entity.usernames else [entity.username if entity.username else None],
+            }
+            return channel_info
+        except Exception as e:
+            print(f"Error fetching channel info: {e}")
+            return None
+
     async def fetch_channel_history(self, channel_id, limit=100, offset_id=0, extended = 1):
         from loader import database
         try:
+            await self.increment_request_count()
+            await self.increment_request_count()
             channel = await self.client.get_entity(channel_id)
             messages = await self.client.get_messages(channel, limit=limit, add_offset=limit*offset_id)
             formatted_messages = []
             grouped_messages = {}  # Словарь для хранения объединенных сообщений альбома
+
+            def extract_links(text: str):
+                url_pattern = re.compile(
+                    r'\b(?:http|https)://\S+\b|(?<=\()\S+(?=\))'
+                )
+                return url_pattern.findall(text)
 
             for message in messages:
                 if message.id <= offset_id:
@@ -136,11 +209,12 @@ class UserBot:
                             "medias": [],
                             "id": message.id,
                             "date": message.date.strftime('%d.%m.%Y %H:%M:%S'),
+                            "link": f"t.me/{message.sender.username if message.sender.username else 'c/'+str(message.sender.id)}/{message.id}",
                             "views": message.views or 0,
                             "chat_id": message.chat_id,
                             "forwarded_from": message.forward.sender_id if message.forward else None,
                         }
-                    grouped_messages[grouped_id]["texts"].append(message.text)
+                    grouped_messages[grouped_id]["texts"].append(markdown_to_text(message.text))
                     if message.media:
                         media_info = await self.extract_media_info(message.media, extended)
                         grouped_messages[grouped_id]["medias"].append(media_info)
@@ -148,20 +222,15 @@ class UserBot:
                 formatted_message = await self.format_message(message, extended)
                 formatted_messages.append(formatted_message)
 
-            def extract_links(text: str):
-                url_pattern = re.compile(
-                    r'\b(?:http|https)://\S+\b|(?<=\()\S+(?=\))'
-                )
-                return url_pattern.findall(text)
             for grouped_id, grouped_message in grouped_messages.items():
                 formatted_message = {
-                        "id": int(grouped_id),
+                        "id": grouped_message['id'],
                         "date": grouped_message["date"],
                         "views": grouped_message["views"],
-                        "link": f"t.me/{message.sender.username if message.sender.username else 'c/'+str(message.sender.id)}/{message.id}",
-                        "forwarded_from": message.forward.from_id.channel_id if message.forward else None,
+                        "link": grouped_message['link'],
+                        "forwarded_from": grouped_message['forwarded_from'],
                         "is_deleted": 0,
-                        "text": "\n".join(grouped_message["texts"]),
+                        "text": markdown_to_text("\n".join(grouped_message["texts"])),
                         "media": grouped_message["medias"],
                         "entities": extract_links("\n".join(grouped_message["texts"]))
                 }
@@ -196,7 +265,8 @@ class UserBot:
                 "channel_id": message.sender.id,
                 "forwarded_from": message.forward.from_id.channel_id if message.forward else None,
                 "is_deleted": 0,
-                "text": message.text,
+                "text": markdown_to_text(message.text),
+                "markdown_text": message.text,
                 "media": await self.extract_media_info(message.media, extended=extended) if message.media else None,
                 "entities":extract_links(message.text)
         }
@@ -209,7 +279,7 @@ class UserBot:
 
         # Downloading the media and converting to base64
         if extended == 1:
-
+            await self.increment_request_count()
             file_path = await self.client.download_media(media)
             try:
                 with open(file_path, "rb") as file:

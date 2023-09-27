@@ -14,6 +14,7 @@ class Bot(Base):
     proxy = Column(String, nullable=False)
     api_id = Column(String, nullable=False)
     api_hash = Column(String, nullable=False)
+    request_count = Column(BigInteger, default=0)
 
     channels = relationship("ChannelBotRelation", back_populates="bot")
 

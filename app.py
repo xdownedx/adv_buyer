@@ -2,8 +2,8 @@ from loader import app, database, bots, config
 import uvicorn
 import api
 from database import Bot  # Импортируем модель Bot
-
 import asyncio
+
 
 async def run_fastapi():
     uvicorn_config = uvicorn.Config(app, host="0.0.0.0", port=config("PORT", cast=int), loop="asyncio")
