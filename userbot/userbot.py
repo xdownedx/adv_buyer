@@ -64,8 +64,7 @@ class UserBot:
 
     async def get_userbot_status(self):
         try:
-            me = await self.client.get_me()
-            if me:
+            if self.client.is_connected():
                 return "ok"
             else:
                 return "fail"
