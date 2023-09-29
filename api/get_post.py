@@ -25,4 +25,4 @@ async def get_post(body: ChannelPost):
                     result = await bot.get_post_content(url=body.url)
                     return {"status":"ok", "post":result}
     except Exception as e:
-        return {"status":"failed", "error": e.args}
+        return {"status":"failed", "error": e.args[0]}

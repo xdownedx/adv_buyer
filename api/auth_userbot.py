@@ -40,7 +40,7 @@ async def get_code(body: GetCodeData):
         await new_client.disconnect()
         return {'status': "ok", 'phone_code_hash': code_hash.phone_code_hash}
     except Exception as e:
-        return {'status': "error", 'description': e.args}
+        return {'status': "error", 'description': e.args[0]}
 
 @app.post("/auth_new_user")
 async def auth_new_user(body: AuthNewUserData):
@@ -63,4 +63,4 @@ async def auth_new_user(body: AuthNewUserData):
         asyncio.create_task(bot.client.start())
         return {"status": "ok"}
     except Exception as e:
-        return {'status': "failed", 'error': e.args}
+        return {'status': "failed", 'error': e.args[0]}

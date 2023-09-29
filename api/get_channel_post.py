@@ -36,4 +36,4 @@ async def get_channel_posts(body: ChannelPost):
                     return {"status":"ok", "items":result}
     except Exception as e:
         return {"status": "failed",
-            "error": e.args}
+            "error": e.args[0]}

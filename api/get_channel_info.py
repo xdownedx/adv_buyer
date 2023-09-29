@@ -25,4 +25,4 @@ async def get_info_channel(body: Channel):
                     result = await bot.get_channel_info(channel_link=body.url)
                     return {"status":"ok", "channel":result}
     except Exception as e:
-        return {"status":"failed", "error": e.args}
+        return {"status":"failed", "error": e.args[0]}

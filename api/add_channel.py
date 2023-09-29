@@ -61,4 +61,4 @@ async def add_new_channel(body: ChannelURL):
             else:
                 return {'status': 'pending'}
     except Exception as e:
-        return {"status":"failed", "error": e.args}
+        return {"status":"failed", "error": e.args[0]}
