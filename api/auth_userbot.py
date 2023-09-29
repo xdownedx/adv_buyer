@@ -5,7 +5,7 @@ import asyncio
 from telethon import TelegramClient
 from pydantic.dataclasses import dataclass
 from typing import Optional
-
+import os
 @dataclass
 class GetCodeData:
     phone: str
@@ -34,6 +34,15 @@ async def get_code(body: GetCodeData):
         'password': f'{proxy[3]}'
     }
     try:
+        try:
+            os.remove(f"{body.phone}.session")
+            print(f"Файл {body.phone}.session успешно удален.")
+        except FileNotFoundError:
+            print(f"Файл {body.phone}.session не найден.")
+        except PermissionError:
+            print(f"Недостаточно прав для удаления файла {body.phone}.session.")
+        except Exception as e:
+            print(f"Не удалось удалить файл {body.phone}.session из-за следующей ошибки: {e}")
         new_client = TelegramClient(session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
         await new_client.connect()
         code_hash = await new_client.send_code_request(phone=body.phone)
