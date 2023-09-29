@@ -1,24 +1,36 @@
-version: '3.8'
+version: '3'
 
 services:
   app:
+    container_name: adv_buyer_python_userbot
     build: .
     ports:
-      - "10321:10321" # Прокидываем порт FastAPI
-    depends_on:
-      - db
+      - 10321:10321
+    restart: unless-stopped
     environment:
-      - PORT=10321
-      - PG_URL=postgresql://postgres:1q2w3e4r@db/monitoring1
+      PORT: 10321
+      PG_URL: postgresql://postgres:1q2w3e4r@db/monitoring1
+    networks:
+      - mynet
+      - malone_7
 
   db:
-    image: postgres:13
+    container_name: adv_buyer_python_userbot_db
+    image: postgres:15-alpine
+    ports:
+      - 10322:5432
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=1q2w3e4r
-      - POSTGRES_DB=monitoring1
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1q2w3e4r
+      POSTGRES_DB: monitoring1
+    networks:
+      - mynet
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./volumes/db/data:/var/lib/postgresql/data
 
-volumes:
-  pgdata:
+networks:
+  mynet:
+    driver: bridge
+  malone_7:
+    external: true
