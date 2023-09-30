@@ -57,7 +57,7 @@ async def add_new_channel(body: ChannelURL):
                 )
                 database.add_record(channel)
 
-                relation = ChannelBotRelation(bot_id=min_channels_bot.phone, channel_id=new_channel_entity["id"])
+                relation = ChannelBotRelation(bot_id=min_channels_bot.bot_id, channel_id=new_channel_entity["id"])
                 database.add_record(relation)
 
                 return {'status': "ok", 'channel_id': new_channel_entity["id"]}
