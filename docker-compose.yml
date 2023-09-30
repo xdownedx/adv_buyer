@@ -13,7 +13,8 @@ services:
     networks:
       - mynet
       - malone_7
-
+    volumes:
+      - ./sessions:/app/sessions
   db:
     container_name: adv_buyer_python_userbot_db
     image: postgres:15-alpine
