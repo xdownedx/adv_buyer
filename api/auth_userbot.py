@@ -43,7 +43,7 @@ async def get_code(body: GetCodeData):
             print(f"Недостаточно прав для удаления файла {body.phone}.session.")
         except Exception as e:
             print(f"Не удалось удалить файл {body.phone}.session из-за следующей ошибки: {e}")
-        new_client = TelegramClient(session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
+        new_client = TelegramClient(session=f"/app/sessions/{body.phone}", api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
         await new_client.connect()
         code_hash = await new_client.send_code_request(phone=body.phone)
         await new_client.disconnect()
@@ -62,7 +62,7 @@ async def auth_new_user(body: AuthNewUserData):
         'password': f'{proxy[3]}'
     }
     try:
-        new_client = TelegramClient(session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
+        new_client = TelegramClient(session=f"/app/sessions/{body.phone}", api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
         await new_client.connect()
         user = await new_client.sign_in(phone=body.phone, code=body.code, password=body.password, phone_code_hash=body.phone_code_hash)
         await new_client.disconnect()

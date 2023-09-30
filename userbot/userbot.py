@@ -22,7 +22,7 @@ class UserBot:
             'password': f'{proxy[3]}'
         }
         self.phone = session
-        self.client = TelegramClient(session=session, api_id=api_id, api_hash=api_hash, proxy=self.proxy)
+        self.client = TelegramClient(session=f"/app/sessions/{session}", api_id=api_id, api_hash=api_hash, proxy=self.proxy)
         self.channels = []
         self.bot_id = bot_id
         self.status = "ok"
