@@ -1,4 +1,4 @@
-from loader import app, database
+from loader import app, database, bots
 from userbot import UserBot
 from database import Bot
 import asyncio
@@ -35,7 +35,7 @@ async def get_code(body: GetCodeData):
     }
     try:
         try:
-            os.remove(f"{body.phone}.session")
+            os.remove(f"/app/sessions/{body.phone}.session")
             print(f"Файл {body.phone}.session успешно удален.")
         except FileNotFoundError:
             print(f"Файл {body.phone}.session не найден.")
@@ -68,8 +68,10 @@ async def auth_new_user(body: AuthNewUserData):
         await new_client.disconnect()
         database.add_record(Bot(phone=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=body.proxy, name=user.first_name, user_id=user.id))
         # Запускаем нового бота
-        bot = UserBot(bot_id=user.id, session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=body.proxy)
-        asyncio.create_task(bot.client.start())
+        bot_id = database.get_bot_id_by_phone(phone=body.phone)
+        bot = UserBot(bot_id=bot_id, session=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=body.proxy)
+        bots[body.phone] = bot
+        asyncio.create_task(bot.start())
         return {"status": "ok"}
     except Exception as e:
         return {'status': "failed", 'error': e.args[0]}

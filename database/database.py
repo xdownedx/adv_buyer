@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from .base import Base
-from .models import Channel,ChannelBotRelation
+from .models import Channel,ChannelBotRelation, Bot
 
 
 class Database:
@@ -51,3 +51,9 @@ class Database:
         channels = [session.query(Channel).get(relation.channel_id) for relation in relations]
         session.close()
         return channels
+
+    def get_bot_id_by_phone(self, phone):
+        session = self.Session()
+        bot = session.query(Bot).filter_by(phone=phone).first()
+        session.close()
+        return bot.bot_id
