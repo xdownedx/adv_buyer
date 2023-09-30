@@ -21,11 +21,14 @@ async def add_new_channel(body: ChannelURL):
                 return {"status": "ok", "channel": result}
         else:
             for bot in bots.values():
-                channel_id = await bot.check_url(url=body.url)
-                if channel_id:
-                    # If any bot can access the channel, no need to subscribe
-                    channel = await bot.get_channel_info(channel_link=channel_id)
-                    return {'status': "ok", 'channel': channel}
+                try:
+                    channel_id = await bot.check_url(url=body.url)
+                    if channel_id:
+                        # If any bot can access the channel, no need to subscribe
+                        channel = await bot.get_channel_info(channel_link=channel_id)
+                        return {'status': "ok", 'channel': channel}
+                except:
+                    pass
 
             # If no bot has access, find the bot with the minimum number of subscribed channels
             min_channels_bot = None
@@ -54,7 +57,7 @@ async def add_new_channel(body: ChannelURL):
                 )
                 database.add_record(channel)
 
-                relation = ChannelBotRelation(bot_id=min_channels_bot.bot_id, channel_id=channel.channel_id)
+                relation = ChannelBotRelation(bot_id=min_channels_bot.phone, channel_id=new_channel_entity["id"])
                 database.add_record(relation)
 
                 return {'status': "ok", 'channel_id': new_channel_entity["id"]}

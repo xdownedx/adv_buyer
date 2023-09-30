@@ -30,6 +30,7 @@ class UserBot:
 
     async def start(self):
         await self.client.connect()
+        await self.client.start()
         self.initialize_handlers()
         from database import Bot
         from loader import database
@@ -81,8 +82,9 @@ class UserBot:
         try:
             await self.increment_request_count()
             updates = await self.client(ImportChatInviteRequest(channel_identifier))
-            channel_entity = await self.client.get_entity(updates.chats[0].id if updates.chats else updates.users[0].id)
-        except UserAlreadyParticipantError:
+            channel_entity = await self.client.get_entity(url)
+        except UserAlreadyParticipantError as err:
+            print(err)
             await self.increment_request_count()
             channel_entity = await self.client.get_entity(url)
             pass
@@ -100,9 +102,8 @@ class UserBot:
         # Extracting relevant information from the channel entity
         channel_info = {
             "id": channel_entity.id,
-            "username": getattr(channel_entity, "username", None),
-            "title": getattr(channel_entity, "title", None),
-            "description": getattr(channel_entity, "description", None),
+            "username": channel_entity.username,
+            "title": channel_entity.title,
         }
 
         return channel_info
