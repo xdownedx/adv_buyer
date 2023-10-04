@@ -172,6 +172,7 @@ class UserBot:
                 "subscribers_count": full_channel.full_chat.participants_count,
                 "created_date": entity.date.strftime('%d.%m.%Y %H:%M:%S'),
                 "peer_type": "channel",
+                "is_scam": entity.scam,
                 "username": f"@{entity.username}" if entity.username else None,
                 "active_usernames": [f"@{username for username in entity.usernames}"] if entity.usernames else [entity.username if entity.username else None],
             }
