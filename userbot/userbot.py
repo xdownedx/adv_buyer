@@ -72,7 +72,7 @@ class UserBot:
 
     async def get_userbot_status(self):
         try:
-            if self.client.is_user_authorized() and self.client.is_connected():
+            if await self.client.is_user_authorized() and await self.client.is_connected():
                 return "ok"
             else:
                 return "fail"
