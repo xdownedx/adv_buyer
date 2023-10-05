@@ -29,18 +29,25 @@ class UserBot:
         self.request_count = 0
 
     async def start(self):
-        await self.client.connect()
-        await self.client.start()
-        self.initialize_handlers()
-        from database import Bot
-        from loader import database
-        """Increment the request count and manage the session directly."""
-        # Create a new session
-        session = database.Session()
-        bot_record = session.query(Bot).filter(Bot.phone == self.phone).first()
-        if bot_record:
-            bot_record.request_count += 1
-            self.request_count = bot_record.request_count
+        try:
+            from loader import logger
+            await self.client.connect()
+            await self.client.start()
+            self.initialize_handlers()
+            logger.info(f"{self.phone} успешно запущена сессия")
+            from database import Bot
+            from loader import database
+            """Increment the request count and manage the session directly."""
+            # Create a new session
+            session = database.Session()
+            bot_record = session.query(Bot).filter(Bot.phone == self.phone).first()
+            if bot_record:
+                bot_record.request_count += 1
+                self.request_count = bot_record.request_count
+
+        except Exception as e:
+            logger.error(f"{self.phone} не смог запустить сессию! Ошибка: {e}")
+
 
     async def check_url(self, url):
         try:
