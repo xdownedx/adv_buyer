@@ -1,4 +1,4 @@
-from loader import app, database, bots
+from loader import app, database, bots, logger
 from userbot import UserBot
 from database import Bot
 import asyncio
@@ -64,6 +64,7 @@ async def auth_new_user(body: AuthNewUserData):
     try:
         new_client = TelegramClient(session=f"/app/sessions/{body.phone}", api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
         await new_client.connect()
+        logger.info(f"Попытка авторизации {body.phone}, код: {body.code}, пароль: {body.password}")
         user = await new_client.sign_in(phone=body.phone, code=body.code, password=body.password, phone_code_hash=body.phone_code_hash)
         await new_client.disconnect()
         database.add_record(Bot(phone=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=body.proxy, name=user.first_name, user_id=user.id))
@@ -74,4 +75,6 @@ async def auth_new_user(body: AuthNewUserData):
         asyncio.create_task(bot.start())
         return {"status": "ok"}
     except Exception as e:
+        logger.info(f"Ошибка авторизации {body.phone}, код: {body.code}, пароль: {body.password}, ОШИБКА: {e}")
+
         return {'status': "failed", 'error': e.args[0]}
