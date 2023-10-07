@@ -2,7 +2,7 @@ from loader import app, database, bots, logger
 from userbot import UserBot
 from database import Bot
 import asyncio
-from telethon import TelegramClient
+from telethon import TelegramClient, errors
 from pydantic.dataclasses import dataclass
 from typing import Optional
 import os
@@ -65,8 +65,16 @@ async def auth_new_user(body: AuthNewUserData):
         new_client = TelegramClient(session=f"/app/sessions/{body.phone}", api_id=body.api_id, api_hash=body.api_hash, proxy=proxy)
         await new_client.connect()
         logger.info(f"Попытка авторизации {body.phone}, код: {body.code}, пароль: {body.password}")
-        user = await new_client.sign_in(phone=body.phone, code=body.code, password=body.password, phone_code_hash=body.phone_code_hash)
+        try:
+            user = await new_client.sign_in(phone=body.phone, code=body.code, phone_code_hash=body.phone_code_hash)
+            logger.info(f"Попытка авторизации {body.phone}, код: {body.code}")
+        except errors.SessionPasswordNeededError:
+            logger.info(f"Попытка авторизации {body.phone}, запрошен двухфакторный пароль")
+            logger.info(f"Попытка авторизации {body.phone}, с двухфакторным паролем")
+            user = await new_client.sign_in(password=body.password)
         await new_client.disconnect()
+        logger.info(f"Успешная авторизация {body.phone}")
+
         database.add_record(Bot(phone=body.phone, api_id=body.api_id, api_hash=body.api_hash, proxy=body.proxy, name=user.first_name, user_id=user.id))
         # Запускаем нового бота
         bot_id = database.get_bot_id_by_phone(phone=body.phone)
