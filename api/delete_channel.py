@@ -12,7 +12,10 @@ async def add_new_channel(body: ChannelURL):
     try:
         if is_channel_public(body.url):
             bot = min(bots.values(), key=lambda x: x.request_count)
-            channel_id = await bot.check_url(url=body.url.split("/")[-1])
+            try:
+                channel_id = await bot.check_url(url=body.url.split("/")[-1])
+            except:
+                pass
             if channel_id:
                 await bot.get_channel_info(channel_link=channel_id)
                 return {"status": "fail", "error": "channel is public"}
