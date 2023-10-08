@@ -19,7 +19,8 @@ async def add_new_channel(body: ChannelURL):
         else:
             for bot in bots.values():
                 try:
-                    channel_id = await bot.check_url(url=body.url)
+                    channel_url = int(body.url) if body.url.isdigit() else body.url
+                    channel_id = await bot.check_url(url=channel_url)
                     if channel_id:
                         # If any bot can access the channel, no need to subscribe
                         await bot.unsub_to_channel(channel_id=channel_id)
