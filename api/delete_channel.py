@@ -29,7 +29,7 @@ async def add_new_channel(body: ChannelURL):
                             pass
                         return {'status': "ok", 'channel': channel_id}
                 except Exception as e:
-                    return {'status': 'fail', "error":e}
+                    return {'status': 'fail', "error":e.args[0]}
             return {'status': 'fail', "error": "channel not found"}
     except Exception as e:
         return {"status":"failed", "error": e.args[0]}
