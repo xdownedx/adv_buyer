@@ -115,6 +115,16 @@ class UserBot:
 
         return channel_info
 
+    async def unsub_to_channel(self, channel_id):
+        entity = await self.client.get_entity(channel_id)
+        try:
+            await self.increment_request_count()
+            updates = await self.client(LeaveChannelRequest(entity))
+
+        except Exception as e:
+            raise ValueError(f"Unable to leave from channel with identifier {channel_id}. Error: {str(e)}")
+
+
     async def get_post_content(self, url):
         parts = url.split('/')
         channel = int(parts[-2]) if parts[-2].isdigit() else parts[-2]
