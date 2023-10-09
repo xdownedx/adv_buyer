@@ -73,11 +73,12 @@ class UserBot:
     async def get_userbot_status(self):
         try:
             if await self.client.is_user_authorized():
-                return "ok"
+                me = await self.client.get_me()
+                return "ok", me.username
             else:
-                return "fail"
+                return "fail", None
         except:
-            return "fail"
+            return "fail", None
     async def sub_to_channel(self, url):
         # Extracting the username, invite link or hash from the provided URL
         match = re.search(r"(?:https://t\.me/joinchat/|https://t\.me/\+|https://t\.me/|@)?([a-zA-Z0-9_\-]+)", url)
