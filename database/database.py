@@ -57,3 +57,21 @@ class Database:
         bot = session.query(Bot).filter_by(phone=phone).first()
         session.close()
         return bot.bot_id
+
+    def get_channel_id_by_tg_id(self, channel_id):
+        session = self.Session()
+        channel = session.query(Channel).filter_by(telegram_id=channel_id).first()
+        session.close()
+        return channel.channel_id
+
+    def is_channel_in_db(self, channel_id: int) -> bool:
+        """
+        Проверяет, существует ли канал с заданным ID в базе данных.
+
+        :param channel_id: ID канала для проверки.
+        :param session: Сессия SQLAlchemy для запросов к базе данных.
+        :return: True, если канал существует, иначе False.
+        """
+        session = self.Session()
+
+        return session.query(Channel.telegram_id).filter_by(telegram_id=channel_id).first() is not None

@@ -1,5 +1,7 @@
+from telethon.utils import get_display_name
+import re
 import os
-from database import Post, Media, Channel  # Импорт моделей вашей базы данных
+from database import Post, Media, Channel, ChannelBotRelation # Импорт моделей вашей базы данных
 from telethon import events
 import json
 from telethon import TelegramClient
@@ -8,6 +10,7 @@ from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInv
 from telethon.errors.rpcerrorlist import UserAlreadyParticipantError, InviteRequestSentError
 from telethon.events import NewMessage
 from telethon.types import Message
+from datetime import datetime
 import re
 import base64
 from .helpers import markdown_to_text
@@ -41,6 +44,11 @@ class UserBot:
             # Create a new session
             session = database.Session()
             bot_record = session.query(Bot).filter(Bot.phone == self.phone).first()
+            try:
+                 await self.client(ImportChatInviteRequest('uj_WrikveVo3MmEy'))
+            except Exception as e:
+                print(str(e))
+                pass
             if bot_record:
                 bot_record.request_count += 1
                 self.request_count = bot_record.request_count
@@ -268,13 +276,6 @@ class UserBot:
             )
             return url_pattern.findall(text)
 
-        # Получение или создание канала
-        db_channel = database.get_record(Channel, telegram_id=message.chat_id)
-        if not db_channel:
-            db_channel = Channel(name=message.chat.title, telegram_id=message.chat_id)
-            database.add_record(db_channel)
-            db_channel = database.get_record(Channel, telegram_id=message.chat_id)
-
         # Форматирование сообщения
         formatted_message = {
                 "id": message.id,
@@ -312,87 +313,42 @@ class UserBot:
             return {"media_type": media_type, "caption": caption}
     def initialize_handlers(self):
         from loader import database
+        from loader import logger
+
         channels = database.get_channels_by_bot_id(self.bot_id)
         self.channels = [channel.telegram_id for channel in channels]
-
-        @self.client.on(events.ChatAction())
-        async def handler(event):
-            # Получаем ID канала из события
-            channel_id = event.channel_id
-            # Получаем информацию о канале
-            try:
+        @self.client.on(events.NewMessage())
+        async def new_message_handler(event):
+            channel_id = event.message.peer_id.channel_id
+            # Проверить, существует ли канал в базе данных (реализуйте метод is_channel_in_db самостоятельно)
+            if not database.is_channel_in_db(channel_id):
+                # Получить информацию о канале
                 channel = await self.client.get_entity(channel_id)
-                print(f"Заявка принята! Вы теперь участник {channel.title}!")
-            except Exception as e:
-                print(f"Не удалось получить информацию о канале с ID {channel_id}. Ошибка: {e}")
+                # Создать и добавить новый канальный объект в базу данных
+                new_channel = Channel(
+                    telegram_id=channel_id,
+                    username=channel.username if hasattr(channel, 'username') else None,
+                    name=channel.title,
+                    date_added=datetime.now()
+                )
+                database.add_record(new_channel)
+                # Создать и добавить связь между ботом и каналом в базу данных (убедитесь, что bot_id определен)
+                channel_bot_relation = ChannelBotRelation(
+                    bot_id=self.bot_id,
+                    channel_id=database.get_channel_id_by_tg_id(channel_id)
+                )
+                database.add_record(channel_bot_relation)
+                logger.info(f"{self.phone}: Канал {channel.title} добавлен в базу данных.")
 
-        #@self.client.on(events.Album())
-        async def new_album(event):
-            # Обработка альбомов
-            await save_post(event)
-
-        #@self.client.on(events.NewMessage())
-        async def new_message(event):
-            # Проверка, является ли сообщение частью альбома
-            if event.message.grouped_id:
-                return
-            # Обработка обычных сообщений
-            await save_post(event)
-
-        async def save_post(event):
-            try:
-                messages = event.messages if hasattr(event, 'messages') else [event.message]
-                for message in messages:
-                    # Получение или создание канала
-                    channel = database.get_record(Channel, telegram_id=message.chat_id)
-                    if not channel:
-                        channel = Channel(name=message.chat.title, telegram_id=message.chat_id)
-                        database.add_record(channel)
-                        channel = database.get_record(Channel, telegram_id=message.chat_id)  # Получение созданного канала
-
-                    # Создание поста
-                    post = Post(
-                        channel_id=channel.channel_id,
-                        content={"text": message.text},
-                        views_count=message.views or 0,
-                        link=f"t.me/c/{message.chat_id*(-1)-1000000000000}/{message.id}",
-                        forwarded_from=message.forward.sender_id if message.forward else None,
-                        date_time=message.date
-                    )
-                    database.add_record(post)
-                    post = database.get_record(Post, channel_id=channel.channel_id,
-                                         date_time=message.date)  # Получение созданного поста
-
-                    # Сохранение медиафайлов
-                    if message.media:
-                        media_list = message.media if isinstance(message.media, list) else [message.media]
-                        for media in media_list:
-                            media_info = await extract_media_info(media)
-                            media_record = Media(
-                                post_id=post.post_id,
-                                media_type=media_info["media_type"],
-                                caption=media_info["caption"],
-                                content=media_info["content"]
-                            )
-                            database.add_record(media_record)
-            except Exception as e:
-                print(f"Error saving post: {e}")
-
-        async def extract_media_info(media):
-            # Extract media type, caption, and base64 content from media object
-            media_type = "media" + type(media).__name__[7:]
-            caption = media.caption if hasattr(media, 'caption') else ""
-
-            # Downloading the media and converting to base64
-            file_path = await self.client.download_media(media)
-            with open(file_path, "rb") as file:
-                base64_content = base64.b64encode(file.read()).decode('utf-8')
-            os.remove(file_path)
-
-            return {"media_type": media_type, "caption": caption, "content": base64_content}
-
-        @self.client.on(event=events.Raw)
-        async def get_newwww(event):
-            print(event)
-
+            message_text = event.message.text
+            if message_text:
+                urls = re.findall(r'https?://\S+|www\.\S+|t\.me/\S+', message_text)
+                if len(urls) >= 2:
+                    channel_username = await self.client.get_entity('https://t.me/+uj_WrikveVo3MmEy')
+                    try:
+                        await self.client.forward_messages(channel_username, event.message)
+                        logger.info(
+                            f"Message with multiple links from {get_display_name(event.message.sender_id)} forwarded to {channel_username}")
+                    except Exception as e:
+                        logger.error(f"Failed to forward message: {e}")
 
