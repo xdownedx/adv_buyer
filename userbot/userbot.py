@@ -317,14 +317,21 @@ class UserBot:
 
         channels = database.get_channels_by_bot_id(self.bot_id)
         self.channels = [channel.telegram_id for channel in channels]
-        @self.client.on(events.NewMessage())
-        async def new_message_handler(event):
-            channel_id = event.message.peer_id.channel_id
-            # Проверить, существует ли канал в базе данных (реализуйте метод is_channel_in_db самостоятельно)
+
+        def extract_links(text: str):
+            url_pattern = re.compile(
+                r'\b(?:http|https)://\S+\b|(?<=\()\S+(?=\))'
+            )
+            return url_pattern.findall(text)
+
+        @self.client.on(events.Album)
+        async def album_handler(event):
+            channel_id = event.messages[0].peer_id.channel_id
+            if channel_id == 1698919256:
+                return
+
             if not database.is_channel_in_db(channel_id):
-                # Получить информацию о канале
                 channel = await self.client.get_entity(channel_id)
-                # Создать и добавить новый канальный объект в базу данных
                 new_channel = Channel(
                     telegram_id=channel_id,
                     username=channel.username if hasattr(channel, 'username') else None,
@@ -332,7 +339,64 @@ class UserBot:
                     date_added=datetime.now()
                 )
                 database.add_record(new_channel)
-                # Создать и добавить связь между ботом и каналом в базу данных (убедитесь, что bot_id определен)
+                channel_bot_relation = ChannelBotRelation(
+                    bot_id=self.bot_id,
+                    channel_id=database.get_channel_id_by_tg_id(channel_id)
+                )
+                database.add_record(channel_bot_relation)
+                logger.info(f"{self.phone}: Канал {channel.title} добавлен в базу данных.")
+
+            message_text = event.messages[0].text
+            if message_text:
+                urls = event.messages[0].entities or []
+                if len(urls) >= 2:
+                    channel_username = await self.client.get_entity('https://t.me/+uj_WrikveVo3MmEy')
+                    source_channel = await self.client.get_entity(channel_id)
+                    new_message_text = f"From {source_channel.title}:\n\n{message_text}"
+
+                    if event.messages[0].sender.noforwards:
+                        media_files = []
+                        try:
+                            # Download all media files from the album
+                            for message in event.messages:
+                                if hasattr(message, 'media'):
+                                    media_file = await self.client.download_media(message)
+                                    media_files.append(media_file)
+
+                            # Send message with media
+                            await self.client.send_message(channel_username, new_message_text, file=media_files)
+                            logger.info(
+                                f"Copied album with multiple links from {get_display_name(event.messages[0].sender_id)} to {channel_username}")
+                        except Exception as e:
+                            logger.error(f"Failed to send copied album: {e}")
+                        finally:
+                            # Delete the downloaded media files
+                            for media_file in media_files:
+                                if os.path.exists(media_file):
+                                    os.remove(media_file)
+                    else:
+                        try:
+                            await event.forward_to(channel_username)
+                            logger.info(
+                                f"Album with multiple links from {get_display_name(event.messages[0].sender_id)} forwarded to {channel_username}")
+                        except Exception as e:
+                            logger.error(f"Failed to forward album: {e}")
+
+        @self.client.on(events.NewMessage())
+        async def new_message_handler(event):
+            channel_id = event.message.peer_id.channel_id
+            if channel_id == 1698919256 or event.message.grouped_id != None:
+                return
+
+            if not database.is_channel_in_db(channel_id):
+                channel = await self.client.get_entity(channel_id)
+                new_channel = Channel(
+                    telegram_id=channel_id,
+                    username=channel.username if hasattr(channel, 'username') else None,
+                    name=channel.title,
+                    date_added=datetime.now()
+                )
+                database.add_record(new_channel)
                 channel_bot_relation = ChannelBotRelation(
                     bot_id=self.bot_id,
                     channel_id=database.get_channel_id_by_tg_id(channel_id)
@@ -342,13 +406,34 @@ class UserBot:
 
             message_text = event.message.text
             if message_text:
-                urls = re.findall(r'https?://\S+|www\.\S+|t\.me/\S+', message_text)
+                urls = event.message.entities or []
                 if len(urls) >= 2:
                     channel_username = await self.client.get_entity('https://t.me/+uj_WrikveVo3MmEy')
-                    try:
-                        await self.client.forward_messages(channel_username, event.message)
-                        logger.info(
-                            f"Message with multiple links from {get_display_name(event.message.sender_id)} forwarded to {channel_username}")
-                    except Exception as e:
-                        logger.error(f"Failed to forward message: {e}")
+                    if event.message.sender.noforwards:
+                        # New logic to copy the content and media and send as a new message
+                        source_channel = await self.client.get_entity(channel_id)
+                        new_message_text = f"From {source_channel.title}:\n\n{message_text}"
+
+                        if hasattr(event.message, 'media'):
+                            # Download media
+                            media_file = await self.client.download_media(event.message)
+
+                            try:
+                                # Send message with media
+                                await self.client.send_message(channel_username, new_message_text, file=media_file)
+                                logger.info(
+                                    f"Copied message with multiple links from {get_display_name(event.message.sender_id)} to {channel_username}")
+                            except Exception as e:
+                                logger.error(f"Failed to send copied message: {e}")
+                            finally:
+                                # Delete the downloaded media file
+                                if os.path.exists(media_file):
+                                    os.remove(media_file)
+                    else:
+                        try:
+                            await event.forward_to(channel_username)
+                            logger.info(
+                                f"Message with multiple links from {get_display_name(event.message.sender_id)} forwarded to {channel_username}")
+                        except Exception as e:
+                            logger.error(f"Failed to forward message: {e}")
 
