@@ -3,6 +3,8 @@ import re
 import os
 from database import Post, Media, Channel, ChannelBotRelation # Импорт моделей вашей базы данных
 from telethon import events
+from telethon.tl.types import MessageEntityMention, MessageEntityUrl
+
 import json
 from telethon import TelegramClient
 from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest, GetFullChannelRequest
@@ -348,7 +350,8 @@ class UserBot:
 
             message_text = event.messages[0].text
             if message_text:
-                urls = event.messages[0].entities or []
+                urls = [entity for entity in event.messages[0].entities if
+                        isinstance(entity, (MessageEntityMention, MessageEntityUrl))]
                 if len(urls) >= 2:
                     channel_username = await self.client.get_entity('https://t.me/+uj_WrikveVo3MmEy')
                     source_channel = await self.client.get_entity(channel_id)
@@ -406,7 +409,10 @@ class UserBot:
 
             message_text = event.message.text
             if message_text:
-                urls = event.message.entities or []
+
+                urls = [entity for entity in event.message.entities if
+                 isinstance(entity, (MessageEntityMention, MessageEntityUrl))]
+
                 if len(urls) >= 2:
                     channel_username = await self.client.get_entity('https://t.me/+uj_WrikveVo3MmEy')
                     if event.message.sender.noforwards:
