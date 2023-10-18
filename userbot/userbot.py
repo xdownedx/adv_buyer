@@ -409,9 +409,11 @@ class UserBot:
 
             message_text = event.message.text
             if message_text:
-
-                urls = [entity for entity in event.message.entities if
-                 isinstance(entity, (MessageEntityMention, MessageEntityUrl))]
+                try:
+                    urls = [entity for entity in event.message.entities if
+                    isinstance(entity, (MessageEntityMention, MessageEntityUrl))]
+                except:
+                    return
 
                 if len(urls) >= 2:
                     channel_username = await self.client.get_entity('https://t.me/+uj_WrikveVo3MmEy')
