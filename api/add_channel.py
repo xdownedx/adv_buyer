@@ -64,8 +64,7 @@ async def add_new_channel(body: ChannelURL):
                 channel_id = await bot.check_url(url=body.url)
                 if channel_id:
                     if database.is_channel_in_db(channel_id=channel_id):
-                        channel = await bot.get_channel_info(channel_link=channel_id)
-                        return {'status': "ok", 'channel': channel}
+                        return {'status': "ok", 'channel_id': channel_id}
             except:
                 pass
 
