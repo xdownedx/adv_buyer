@@ -46,11 +46,6 @@ class UserBot:
             # Create a new session
             session = database.Session()
             bot_record = session.query(Bot).filter(Bot.phone == self.phone).first()
-            try:
-                 await self.client(ImportChatInviteRequest('uj_WrikveVo3MmEy'))
-            except Exception as e:
-                print(str(e))
-                pass
             if bot_record:
                 bot_record.request_count += 1
                 self.request_count = bot_record.request_count
