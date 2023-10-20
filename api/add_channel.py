@@ -83,7 +83,7 @@ async def add_new_channel(body: ChannelURL):
             # Создание и добавление связи между ботом и каналом в БД
             channel_bot_relation = ChannelBotRelation(
                 bot_id=min_channels_bot.bot_id,
-                channel_id=database.get_channel_id_by_tg_id(channel_id)
+                channel_id=database.get_channel_id_by_tg_id(new_channel_entity["id"])
             )
             database.add_record(channel_bot_relation)
             min_channels_bot.channels.append(new_channel_entity['id'])
