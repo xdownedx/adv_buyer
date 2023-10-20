@@ -64,7 +64,8 @@ async def add_new_channel(body: ChannelURL):
                 channel_id = await bot.check_url(url=body.url)
                 if channel_id:
                     if database.is_channel_in_db(channel_id=channel_id):
-                        return {'status': "ok", 'channel_id': channel_id}
+                        channel = await bot.get_channel_info(channel_link=channel_id)
+                        return {'status': "ok", 'id': channel['id'], 'title': channel['title']}
             except:
                 pass
 
@@ -90,7 +91,7 @@ async def add_new_channel(body: ChannelURL):
             database.add_record(channel_bot_relation)
             min_channels_bot.channels.append(new_channel_entity['id'])
             logger.info(f"{min_channels_bot.phone}: Канал {new_channel_entity['title']} добавлен в базу данных.")
-            return {'status': "ok", 'channel_id': new_channel_entity["id"]}
+            return {'status': "ok", 'id': new_channel_entity["id"], 'title': new_channel_entity['title']}
         else:
             return {'status': 'pending'}
 
