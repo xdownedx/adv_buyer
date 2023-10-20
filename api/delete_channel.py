@@ -10,6 +10,11 @@ class ChannelURL:
 @app.post("/remove_channel")
 async def add_new_channel(body: ChannelURL):
     try:
+        if body.url == 'all':
+            database.delete_all_channels()
+            for bot in bots.values():
+                await bot.unsub_all()
+            return {'status':"ok"}
         if is_channel_public(body.url):
             bot = min(bots.values(), key=lambda x: x.request_count)
             try:

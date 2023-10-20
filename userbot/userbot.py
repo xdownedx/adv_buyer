@@ -32,7 +32,6 @@ class UserBot:
         self.bot_id = bot_id
         self.status = "ok"
         self.request_count = 0
-
     async def start(self):
         try:
             from loader import logger
@@ -84,6 +83,7 @@ class UserBot:
                 return "fail", None
         except:
             return "fail", None
+
     async def sub_to_channel(self, url):
         # Extracting the username, invite link or hash from the provided URL
         match = re.search(r"(?:https://t\.me/joinchat/|https://t\.me/\+|https://t\.me/|@)?([a-zA-Z0-9_\-]+)", url)
@@ -121,6 +121,14 @@ class UserBot:
 
         return channel_info
 
+    async def unsub_all(self):
+        channels = await self.client.get_dialogs()
+        for channel in channels:
+            try:
+                await self.client(LeaveChannelRequest(channel=channel.entity))
+            except Exception as e:
+                print(e)
+                pass
     async def unsub_to_channel(self, channel_id):
         entity = await self.client.get_entity(channel_id)
         try:
@@ -383,7 +391,7 @@ class UserBot:
                         except Exception as e:
                             logger.error(f"Failed to forward album: {e}")
 
-        @self.client.on(events.NewMessage())
+        #@self.client.on(events.NewMessage())
         async def new_message_handler(event):
             channel_id = event.message.peer_id.channel_id
             if channel_id == 1698919256 or event.message.grouped_id != None:

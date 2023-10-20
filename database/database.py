@@ -75,3 +75,17 @@ class Database:
         session = self.Session()
 
         return session.query(Channel.telegram_id).filter_by(telegram_id=channel_id).first() is not None
+
+    def delete_all_channels(self):
+        session = self.Session()
+        try:
+            # Удаление всех записей из таблицы ChannelBotRelation
+            session.query(ChannelBotRelation).delete()
+            # Удаление всех записей из таблицы Channel
+            session.query(Channel).delete()
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
