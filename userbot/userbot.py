@@ -321,7 +321,7 @@ class UserBot:
             )
             return url_pattern.findall(text)
 
-        @self.client.on(events.Album)
+        #@self.client.on(events.Album)
         async def album_handler(event):
             channel_id = event.messages[0].peer_id.channel_id
             if channel_id == 1698919256:
@@ -383,7 +383,7 @@ class UserBot:
                         except Exception as e:
                             logger.error(f"Failed to forward album: {e}")
 
-        @self.client.on(events.NewMessage())
+        #@self.client.on(events.NewMessage())
         async def new_message_handler(event):
             channel_id = event.message.peer_id.channel_id
             if channel_id == 1698919256 or event.message.grouped_id != None:
