@@ -70,7 +70,10 @@ async def add_new_channel(body: ChannelURL):
                 pass
 
         min_channels_bot = min(bots.values(), key=lambda x: len(database.get_channels_by_bot_id(x.bot_id)))
-        new_channel_entity = await min_channels_bot.sub_to_channel(url=body.url)
+        try:
+            new_channel_entity = await min_channels_bot.sub_to_channel(url=body.url)
+        except Exception as e:
+            return {'status': "failed", 'error': f"Unable to access the channel: {str(e)}"}
         if new_channel_entity:
             channel = Channel(
                 telegram_id=new_channel_entity["id"],
@@ -89,9 +92,7 @@ async def add_new_channel(body: ChannelURL):
             min_channels_bot.channels.append(new_channel_entity['id'])
             return {'status': "ok", 'channel_id': new_channel_entity["id"]}
             logger.info(f"{self.phone}: Канал {channel.title} добавлен в базу данных.")
-
         else:
-            # TODO: Добавьте логику для обработки случаев, когда подписка ожидает подтверждения
             return {'status': 'pending'}
 
     except Exception as e:
