@@ -11,7 +11,7 @@ from datetime import datetime
 class ChannelURL:
     url: str
 #@app.post("/add_new_channel")
-async def add_new_channel(body: ChannelURL):
+async def add_new_down_channel(body: ChannelURL):
     # Initially checking if any bot already has access to the channel
     try:
         for bot in bots.values():
@@ -90,8 +90,8 @@ async def add_new_channel(body: ChannelURL):
             )
             database.add_record(channel_bot_relation)
             min_channels_bot.channels.append(new_channel_entity['id'])
+            logger.info(f"{min_channels_bot.phone}: Канал {new_channel_entity['title']} добавлен в базу данных.")
             return {'status': "ok", 'channel_id': new_channel_entity["id"]}
-            logger.info(f"{self.phone}: Канал {channel.title} добавлен в базу данных.")
         else:
             return {'status': 'pending'}
 
