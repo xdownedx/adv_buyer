@@ -94,14 +94,21 @@ class UserBot:
 
         try:
             await self.increment_request_count()
-            updates = await self.client(ImportChatInviteRequest(channel_identifier))
-            channel_entity = await self.client.get_entity(url)
+            try:
+                channel_entity = await self.client.get_entity(url)
+                req = await self.client(JoinChannelRequest(channel_entity))
+            except:
+                pass
+            if not channel_entity:
+                updates = await self.client(ImportChatInviteRequest(channel_identifier))
+                channel_entity = await self.client.get_entity(url)
         except UserAlreadyParticipantError as err:
             print(err)
             await self.increment_request_count()
             channel_entity = await self.client.get_entity(url)
             pass
-        except InviteRequestSentError:
+        except InviteRequestSentError as e:
+            print(str(e))
             return None
         except Exception as e:
             print(e)
