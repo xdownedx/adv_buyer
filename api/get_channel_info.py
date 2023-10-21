@@ -12,17 +12,14 @@ class Channel:
 @app.post("/get_info_channel")
 async def get_info_channel(body: Channel):
     try:
-        if is_channel_public(body.url):
-            bot = min(bots.values(), key=lambda x: x.request_count)
-            channel_id = await bot.check_url(url=body.url.split("/")[-1])
-            if channel_id:
-                result = await bot.get_channel_info(channel_link=body.url)
-                return {"status": "ok", "channel": result}
-        else:
-            for bot in bots.values():
+        for bot in bots.values():
+            try:
                 channel_id = await bot.check_url(url=body.url if not body.url.split("/")[-1].isdigit() else int(body.url.split("/")[-1]))
                 if channel_id:
                     result = await bot.get_channel_info(channel_link=body.url)
                     return {"status":"ok", "channel":result}
+            except:
+                pass
     except Exception as e:
         return {"status":"failed", "error": e.args[0]}
+    return {'status':"failed", 'error': "channel_not_found"}

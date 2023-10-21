@@ -21,19 +21,15 @@ def extract_links(text: str) -> List[str]:
 @app.post("/get_channel_posts")
 async def get_channel_posts(body: ChannelPost):
     try:
-        if is_channel_public(body.url):
-            bot = min(bots.values(), key=lambda x: x.request_count)
-            channel_id = await bot.check_url(url=body.url)
-            if channel_id:
-                result = await bot.fetch_channel_history(channel_id=channel_id, limit=body.limit, offset_id=body.offset,
-                                                         extended=body.extended)
-                return {"status": "ok", "items": result}
-        else:
-            for bot in bots.values():
+        for bot in bots.values():
+            try:
                 channel_id = await bot.check_url(url=body.url)
                 if channel_id:
                     result = await bot.fetch_channel_history(channel_id=channel_id, limit=body.limit, offset_id=body.offset, extended=body.extended)
                     return {"status":"ok", "items":result}
+            except:
+                pass
     except Exception as e:
         return {"status": "failed",
             "error": e.args[0]}
+    return {'status':"failed", 'error': "channel_not_found"}
