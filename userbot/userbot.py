@@ -9,7 +9,7 @@ import json
 from telethon import TelegramClient
 from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest, GetFullChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
-from telethon.errors.rpcerrorlist import UserAlreadyParticipantError, InviteRequestSentError
+from telethon.errors.rpcerrorlist import UserAlreadyParticipantError, InviteRequestSentError, InviteHashExpiredError
 from telethon.events import NewMessage
 from telethon.types import Message
 from datetime import datetime
@@ -94,6 +94,7 @@ class UserBot:
 
         try:
             await self.increment_request_count()
+            channel_entity = None
             try:
                 channel_entity = await self.client.get_entity(url)
                 req = await self.client(JoinChannelRequest(channel_entity))
@@ -102,6 +103,8 @@ class UserBot:
             if not channel_entity:
                 updates = await self.client(ImportChatInviteRequest(channel_identifier))
                 channel_entity = await self.client.get_entity(url)
+        except InviteHashExpiredError as err:
+            raise ValueError("Hash expired")
         except UserAlreadyParticipantError as err:
             print(err)
             await self.increment_request_count()
