@@ -117,8 +117,8 @@ class UserBot:
             print(e)
             try:
                 await self.increment_request_count()
-                await self.client(JoinChannelRequest(channel=channel_identifier))
-                channel_entity = await self.client.get_entity(channel_identifier)
+                channel_entity = await self.client.get_entity(url)
+                req = await self.client(JoinChannelRequest(channel_entity))
             except Exception as e:
                 raise ValueError(f"Unable to join channel with identifier {channel_identifier}. Error: {str(e)}")
 
