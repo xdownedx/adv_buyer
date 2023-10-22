@@ -1,5 +1,6 @@
 from telethon.utils import get_display_name
 import re
+from loader import  logger
 import os
 from database import Post, Media, Channel, ChannelBotRelation # Импорт моделей вашей базы данных
 from telethon import events
@@ -86,6 +87,7 @@ class UserBot:
 
     async def sub_to_channel(self, url):
         # Extracting the username, invite link or hash from the provided URL
+        logger.info(f"{self.phone} | Запрос подписки на канал {url}")
         match = re.search(r"(?:https://t\.me/joinchat/|https://t\.me/\+|https://t\.me/|@)?([a-zA-Z0-9_\-]+)", url)
         if not match:
             raise ValueError("Invalid channel URL")
@@ -104,6 +106,7 @@ class UserBot:
                 updates = await self.client(ImportChatInviteRequest(channel_identifier))
                 channel_entity = await self.client.get_entity(url)
         except InviteHashExpiredError as err:
+            logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: HASH EXPIRED")
             raise ValueError("Hash expired")
         except UserAlreadyParticipantError as err:
             print(err)
@@ -112,6 +115,7 @@ class UserBot:
             pass
         except InviteRequestSentError as e:
             print(str(e))
+            logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: ЗАПРОС УЖЕ ОТПРАВЛЕН")
             return None
         except Exception as e:
             print(e)
@@ -120,6 +124,7 @@ class UserBot:
                 channel_entity = await self.client.get_entity(url)
                 req = await self.client(JoinChannelRequest(channel_entity))
             except Exception as e:
+                logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: {str(e)}")
                 raise ValueError(f"Unable to join channel with identifier {channel_identifier}. Error: {str(e)}")
 
         # Extracting relevant information from the channel entity
@@ -144,17 +149,20 @@ class UserBot:
         try:
             await self.increment_request_count()
             updates = await self.client(LeaveChannelRequest(entity))
-
         except Exception as e:
             raise ValueError(f"Unable to leave from channel with identifier {channel_id}. Error: {str(e)}")
 
 
     async def get_post_content(self, url):
+        logger.info(f"{self.phone} | Запрос поста по ссылке {url}")
+
         parts = url.split('/')
         channel = int(parts[-2]) if parts[-2].isdigit() else parts[-2]
         message_id = int(parts[-1].split('?')[0])
         message = await self.client.get_messages(channel, ids=message_id)
         if not message:
+            logger.info(f"{self.phone} | ОШИБКА запроса поста по ссылке {url}: пост не найден")
+
             raise ValueError("Post not found")
         def extract_links(text: str):
             url_pattern = re.compile(
@@ -198,6 +206,8 @@ class UserBot:
 
     async def get_channel_info(self, channel_link):
         try:
+            logger.info(f"{self.phone} | Запрос инфы о канале {channel_link}")
+
             # Fetching the channel entity
             await self.increment_request_count()
             await self.increment_request_count()
@@ -219,12 +229,15 @@ class UserBot:
             }
             return channel_info
         except Exception as e:
-            print(f"Error fetching channel info: {e}")
+            logger.info(f"{self.phone} | ОШИБКА запроса инфы о канале {channel_link}: {str(e)}")
+
+            print(f"Error fetching channel info: {str(e)}")
             return None
 
     async def fetch_channel_history(self, channel_id, limit=100, offset_id=0, extended = 1):
         from loader import database
         try:
+            logger.info(f"{self.phone} | Запрос истории сообщений в канале {channel_id}")
             await self.increment_request_count()
             await self.increment_request_count()
             channel = await self.client.get_entity(channel_id)
@@ -279,7 +292,8 @@ class UserBot:
                 formatted_messages.append(formatted_message)
             return formatted_messages
         except Exception as e:
-            print(f"Error fetching channel history: {e}")
+            logger.info(f"{self.phone} | ОШИБКА запроса истории сообщений в канале {channel_id}: {str(e)}")
+            print(f"Error fetching channel history: {str(e)}")
             return []
 
     async def format_message(self, message, extended):
