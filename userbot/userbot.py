@@ -1,6 +1,5 @@
 from telethon.utils import get_display_name
 import re
-from loader import  logger
 import os
 from database import Post, Media, Channel, ChannelBotRelation # Импорт моделей вашей базы данных
 from telethon import events
@@ -86,6 +85,8 @@ class UserBot:
             return "fail", None
 
     async def sub_to_channel(self, url):
+        from loader import logger
+
         # Extracting the username, invite link or hash from the provided URL
         logger.info(f"{self.phone} | Запрос подписки на канал {url}")
         match = re.search(r"(?:https://t\.me/joinchat/|https://t\.me/\+|https://t\.me/|@)?([a-zA-Z0-9_\-]+)", url)
@@ -154,6 +155,8 @@ class UserBot:
 
 
     async def get_post_content(self, url):
+        from loader import logger
+
         logger.info(f"{self.phone} | Запрос поста по ссылке {url}")
 
         parts = url.split('/')
@@ -206,6 +209,8 @@ class UserBot:
 
     async def get_channel_info(self, channel_link):
         try:
+            from loader import logger
+
             logger.info(f"{self.phone} | Запрос инфы о канале {channel_link}")
 
             # Fetching the channel entity
@@ -236,6 +241,8 @@ class UserBot:
 
     async def fetch_channel_history(self, channel_id, limit=100, offset_id=0, extended = 1):
         from loader import database
+        from loader import logger
+
         try:
             logger.info(f"{self.phone} | Запрос истории сообщений в канале {channel_id}")
             await self.increment_request_count()
