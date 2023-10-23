@@ -4,12 +4,11 @@ import os
 from database import Post, Media, Channel, ChannelBotRelation # Импорт моделей вашей базы данных
 from telethon import events
 from telethon.tl.types import MessageEntityMention, MessageEntityUrl
-
 import json
 from telethon import TelegramClient
 from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest, GetFullChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
-from telethon.errors.rpcerrorlist import UserAlreadyParticipantError, InviteRequestSentError, InviteHashExpiredError
+from telethon.errors.rpcerrorlist import UserAlreadyParticipantError, InviteRequestSentError, InviteHashExpiredError, FloodWaitError
 from telethon.events import NewMessage
 from telethon.types import Message
 from datetime import datetime
@@ -118,6 +117,9 @@ class UserBot:
             print(str(e))
             logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: ЗАПРОС УЖЕ ОТПРАВЛЕН")
             return None
+        except FloodWaitError as err:
+            logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: Флудвейт {str(err.seconds)}")
+            return ValueError(f"FLOOD_WAIT_{str(err.seconds)}")
         except Exception as e:
             print(e)
             try:
