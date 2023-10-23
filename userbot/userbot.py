@@ -119,7 +119,7 @@ class UserBot:
             return None
         except FloodWaitError as err:
             logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: Флудвейт {str(err.seconds)}")
-            return Exception(f"FLOOD_WAIT_{str(err.seconds)}")
+            raise Exception(f"FLOOD_WAIT_{str(err.seconds)}")
         except Exception as e:
             print(e)
             try:
