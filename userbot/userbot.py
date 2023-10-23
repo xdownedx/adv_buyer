@@ -106,20 +106,20 @@ class UserBot:
                 updates = await self.client(ImportChatInviteRequest(channel_identifier))
                 channel_entity = await self.client.get_entity(url)
         except InviteHashExpiredError as err:
-            logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: HASH EXPIRED")
-            raise ValueError("Hash expired")
+            logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: HASH EXPIRED: {str(err)}")
+            raise Exception("Hash expired")
         except UserAlreadyParticipantError as err:
-            print(err)
+            logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: Юзер уже подписанн: {str(err)}")
             await self.increment_request_count()
             channel_entity = await self.client.get_entity(url)
             pass
         except InviteRequestSentError as e:
             print(str(e))
-            logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: ЗАПРОС УЖЕ ОТПРАВЛЕН")
+            logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: ЗАПРОС УЖЕ ОТПРАВЛЕН: {str(e)}")
             return None
         except FloodWaitError as err:
             logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: Флудвейт {str(err.seconds)}")
-            return ValueError(f"FLOOD_WAIT_{str(err.seconds)}")
+            return Exception(f"FLOOD_WAIT_{str(err.seconds)}")
         except Exception as e:
             print(e)
             try:
