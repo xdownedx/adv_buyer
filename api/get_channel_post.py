@@ -23,10 +23,13 @@ async def get_channel_posts(body: ChannelPost):
     try:
         for bot in bots.values():
             try:
-                channel_id = await bot.check_url(url=body.url)
+                channel_id = await bot.check_url(url=body.url if not body.url.split("/")[-1].isdigit() else int(body.url.split("/")[-1]))
                 if channel_id:
-                    result = await bot.fetch_channel_history(channel_id=channel_id, limit=body.limit, offset_id=body.offset, extended=body.extended)
-                    return {"status":"ok", "items":result}
+                    try:
+                        result = await bot.fetch_channel_history(channel_id=channel_id, limit=body.limit, offset_id=body.offset, extended=body.extended)
+                        return {"status":"ok", "items":result}
+                    except:
+                        return {"status":"failed", "error":}
             except:
                 pass
     except Exception as e:
