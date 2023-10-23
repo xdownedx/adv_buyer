@@ -16,8 +16,11 @@ async def get_post(body: ChannelPost):
             try:
                 channel_id = await bot.check_url(url=int(body.url.split("/")[-2]))
                 if channel_id:
-                    result = await bot.get_post_content(url=body.url)
-                    return {"status":"ok", "post":result}
+                    try:
+                        result = await bot.get_post_content(url=body.url)
+                        return {"status":"ok", "post":result}
+                    except Exception as e:
+                        return {"status": "failed", "error": e.args[0]}
             except:
                 pass
     except Exception as e:
