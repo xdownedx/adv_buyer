@@ -73,7 +73,11 @@ async def add_new_channel(body: ChannelURL):
         try:
             new_channel_entity = await min_channels_bot.sub_to_channel(url=body.url)
         except Exception as e:
-            return {'status': "failed", 'error': f"{str(e)}"}
+            if "FLOOD" in str(e):
+                return {'status': "failed", 'error': f"{str(e)}"}
+            else:
+                return {'status': "failed", 'error': f"Unable to access the channel: {str(e)}"}
+
         if new_channel_entity:
             channel = Channel(
                 telegram_id=new_channel_entity["id"],
