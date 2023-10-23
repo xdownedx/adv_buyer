@@ -28,8 +28,8 @@ async def get_channel_posts(body: ChannelPost):
                     try:
                         result = await bot.fetch_channel_history(channel_id=channel_id, limit=body.limit, offset_id=body.offset, extended=body.extended)
                         return {"status":"ok", "items":result}
-                    except:
-                        return {"status":"failed", "error":}
+                    except Exception as e:
+                        return {"status":"failed", "error":str(e)}
             except:
                 pass
     except Exception as e:
