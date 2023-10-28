@@ -261,30 +261,33 @@ class UserBot:
                 return url_pattern.findall(text)
 
             for message in messages:
-                if message.id <= offset_id:
-                    continue  # Skip messages with ID less than or equal to offset_id
+                try:
+                    if message.id <= offset_id:
+                        continue  # Skip messages with ID less than or equal to offset_id
 
-                # Если сообщение является частью альбома, объединяем его с другими сообщениями альбома
-                if message.grouped_id:
-                    grouped_id = str(message.grouped_id)
-                    if grouped_id not in grouped_messages:
-                        grouped_messages[grouped_id] = {
-                            "texts": [],
-                            "medias": [],
-                            "id": message.id,
-                            "date": message.date.strftime('%d.%m.%Y %H:%M:%S'),
-                            "link": f"t.me/{message.sender.username if message.sender.username else 'c/'+str(message.sender.id)}/{message.id}",
-                            "views": message.views or 0,
-                            "chat_id": message.chat_id,
-                            "forwarded_from": message.forward.sender_id if message.forward else None,
-                        }
-                    grouped_messages[grouped_id]["texts"].append(markdown_to_text(message.text))
-                    if message.media:
-                        media_info = await self.extract_media_info(message.media, extended)
-                        grouped_messages[grouped_id]["medias"].append(media_info)
-                    continue
-                formatted_message = await self.format_message(message, extended)
-                formatted_messages.append(formatted_message)
+                    # Если сообщение является частью альбома, объединяем его с другими сообщениями альбома
+                    if message.grouped_id:
+                        grouped_id = str(message.grouped_id)
+                        if grouped_id not in grouped_messages:
+                            grouped_messages[grouped_id] = {
+                                "texts": [],
+                                "medias": [],
+                                "id": message.id,
+                                "date": message.date.strftime('%d.%m.%Y %H:%M:%S'),
+                                "link": f"t.me/{message.sender.username if message.sender.username else 'c/'+str(message.sender.id)}/{message.id}",
+                                "views": message.views or 0,
+                                "chat_id": message.chat_id,
+                                "forwarded_from": message.forward.sender_id if message.forward else None,
+                            }
+                        grouped_messages[grouped_id]["texts"].append(markdown_to_text(message.text))
+                        if message.media:
+                            media_info = await self.extract_media_info(message.media, extended)
+                            grouped_messages[grouped_id]["medias"].append(media_info)
+                        continue
+                    formatted_message = await self.format_message(message, extended)
+                    formatted_messages.append(formatted_message)
+                except:
+                    pass
 
             for grouped_id, grouped_message in grouped_messages.items():
                 formatted_message = {
