@@ -71,7 +71,11 @@ async def add_new_channel(body: ChannelURL):
             except:
                 pass
 
-        min_channels_bot = min(bots.values(), key=lambda x: len(database.get_channels_by_bot_id(x.bot_id)))
+        filtered_bots = {bot_id: bot for bot_id, bot in bots.items()
+                         if bot.floodwait is None or bot.floodwait < datetime.now()}
+
+        # Находим бота с наименьшим количеством каналов среди отфильтрованных ботов
+        min_channels_bot = min(filtered_bots.values(), key=lambda x: len(database.get_channels_by_bot_id(x.bot_id)))
         try:
             new_channel_entity = await min_channels_bot.sub_to_channel(url=body.url)
         except Exception as e:

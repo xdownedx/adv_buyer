@@ -11,7 +11,7 @@ from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInv
 from telethon.errors.rpcerrorlist import UserAlreadyParticipantError, InviteRequestSentError, InviteHashExpiredError, FloodWaitError
 from telethon.events import NewMessage
 from telethon.types import Message
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 import base64
 from .helpers import markdown_to_text
@@ -30,6 +30,7 @@ class UserBot:
         self.channels = []
         self.bot_id = bot_id
         self.status = "ok"
+        self.floodwait = None
         self.request_count = 0
     async def start(self):
         try:
@@ -119,6 +120,7 @@ class UserBot:
             return None
         except FloodWaitError as err:
             logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: Флудвейт {str(err.seconds)}")
+            self.floodwait = datetime.now() + timedelta(seconds=err.seconds)
             raise ValueError(f"FLOOD_WAIT_{str(err.seconds)}")
         except Exception as e:
             print(e)
