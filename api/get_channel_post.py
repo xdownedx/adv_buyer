@@ -21,6 +21,8 @@ def extract_links(text: str) -> List[str]:
 @app.post("/get_channel_posts")
 async def get_channel_posts(body: ChannelPost):
     try:
+        if "https://" not in body.url:
+            body.url = "https://"+body.url
         for bot in bots.values():
             try:
                 channel_id = await bot.check_url(url=body.url if not body.url.split("/")[-1].isdigit() else int(body.url.split("/")[-1]))

@@ -12,6 +12,8 @@ class ChannelPost:
 @app.post("/get_post")
 async def get_post(body: ChannelPost):
     try:
+        if "https://" not in body.url:
+            body.url = "https://"+body.url
         for bot in bots.values():
             try:
                 channel_id = await bot.check_url(url=int(body.url.split("/")[-2]))

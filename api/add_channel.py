@@ -59,6 +59,8 @@ async def add_new_down_channel(body: ChannelURL):
 @app.post("/add_new_channel")
 async def add_new_channel(body: ChannelURL):
     try:
+        if "https://" not in body.url:
+            body.url = "https://"+body.url
         for bot in bots.values():
             try:
                 channel_id = await bot.check_url(url=body.url)
