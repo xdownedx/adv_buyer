@@ -9,29 +9,29 @@ services:
     restart: unless-stopped
     environment:
       PORT: 10321
-      PG_URL: postgresql://postgres:1q2w3e4r@db/monitoring1
-#    networks:
-#      - mynet
-#      - malone_7
+      PG_URL: postgresql://postgres:secret@db/monitoring1
+    networks:
+      - mynet
+      - malone_7
     volumes:
       - ./sessions:/app/sessions
   db:
     container_name: adv_buyer_python_userbot_db
-    image: postgres:13-alpine
+    image: postgres:15-alpine
     ports:
       - 10322:5432
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1q2w3e4r
+      POSTGRES_PASSWORD: secret
       POSTGRES_DB: monitoring1
- #   networks:
- #     - mynet
+    networks:
+      - mynet
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
 
-#networks:
-#  mynet:
-#    driver: bridge
-#  malone_7:
-#    external: true
+networks:
+  mynet:
+    driver: bridge
+  malone_7:
+    external: true
