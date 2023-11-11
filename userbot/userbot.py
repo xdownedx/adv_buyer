@@ -50,15 +50,19 @@ class UserBot:
                 self.request_count = bot_record.request_count
 
         except Exception as e:
-            logger.error(f"{self.phone} не смог запустить сессию! Ошибка: {e}")
+            logger.error(f"{self.phone} не смог запустить сессию! Ошибка: {str(e)}")
 
 
     async def check_url(self, url):
         try:
+            from loader import logger
+            logger.info(f"{self.phone} | Попытка получения сущности канала {url}")
             await self.increment_request_count()
             entity = await self.client.get_entity(url)
+            logger.info(f"{self.phone} | Попытка получения сущности канала {url}: УСПЕХ id: {entity.id}")
             return entity.id
         except ValueError as e:
+            logger.info(f"{self.phone} | Попытка получения сущности канала {url}: ОШИБКА err: {str(e)}")
             raise ValueError(f"Not found channel by '{url}'")
 
     async def increment_request_count(self):
@@ -91,6 +95,8 @@ class UserBot:
         logger.info(f"{self.phone} | Запрос подписки на канал {url}")
         match = re.search(r"(?:https://t\.me/joinchat/|https://t\.me/\+|https://t\.me/|@)?([a-zA-Z0-9_\-]+)", url)
         if not match:
+            logger.info(f"{self.phone} | Запрос подписки на канал {url} ОШИБКА: ССЫЛКА НЕВАЛИДНАЯ")
+
             raise ValueError("Invalid channel URL")
 
         channel_identifier = match.group(1)
@@ -99,11 +105,16 @@ class UserBot:
             await self.increment_request_count()
             channel_entity = None
             try:
+                logger.info(f"{self.phone} | Попытка подписки на канал {url} №1")
                 channel_entity = await self.client.get_entity(url)
                 req = await self.client(JoinChannelRequest(channel_entity))
-            except:
+            except Exception as e:
+                logger.info(f"{self.phone} | Попытка подписки на канал {url} №1 ОШИБКА: {str(e)}")
+
                 pass
             if not channel_entity:
+                logger.info(f"{self.phone} | Попытка подписки на канал {url} №2")
+
                 updates = await self.client(ImportChatInviteRequest(channel_identifier))
                 channel_entity = await self.client.get_entity(url)
         except InviteHashExpiredError as err:
@@ -124,12 +135,14 @@ class UserBot:
             raise ValueError(f"FLOOD_WAIT_{str(err.seconds)}")
         except Exception as e:
             print(e)
+            logger.info(f"{self.phone} | Попытка подписки на канал {url} №2 ОШИБКА: {str(e)}")
             try:
                 await self.increment_request_count()
+                logger.info(f"{self.phone} | Попытка подписки на канал {url} №3 ОШИБКА: {str(e)}")
                 channel_entity = await self.client.get_entity(url)
                 req = await self.client(JoinChannelRequest(channel_entity))
             except Exception as e:
-                logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url}: {str(e)}")
+                logger.info(f"{self.phone} | ОШИБКА при подписке на канал {url} №3: {str(e)}")
                 raise ValueError(f"Unable to join channel with identifier {channel_identifier}. Error: {str(e)}")
 
         # Extracting relevant information from the channel entity
@@ -142,19 +155,30 @@ class UserBot:
         return channel_info
 
     async def unsub_all(self):
+        from loader import logger
         channels = await self.client.get_dialogs()
         for channel in channels:
             try:
+                logger.info(f"{self.phone} | Отписываюсь от {channel.title}")
+
                 await self.client(LeaveChannelRequest(channel=channel.entity))
             except Exception as e:
+                logger.info(f"{self.phone} | Отписываюсь от {channel.title} ОШИБКА: {str(e)}")
                 print(e)
                 pass
     async def unsub_to_channel(self, channel_id):
+        from loader import logger
+
         entity = await self.client.get_entity(channel_id)
+        logger.info(f"{self.phone} | Отписываюсь от {channel_id}")
+
         try:
             await self.increment_request_count()
             updates = await self.client(LeaveChannelRequest(entity))
+
         except Exception as e:
+            logger.info(f"{self.phone} | Отписываюсь от {channel_id}: ОШИБКА: {str(e)}")
+
             raise ValueError(f"Unable to leave from channel with identifier {channel_id}. Error: {str(e)}")
 
 
@@ -415,7 +439,7 @@ class UserBot:
                             logger.info(
                                 f"Copied album with multiple links from {get_display_name(event.messages[0].sender_id)} to {channel_username}")
                         except Exception as e:
-                            logger.error(f"Failed to send copied album: {e}")
+                            logger.error(f"Failed to send copied album: {str(e)}")
                         finally:
                             # Delete the downloaded media files
                             for media_file in media_files:
@@ -427,7 +451,7 @@ class UserBot:
                             logger.info(
                                 f"Album with multiple links from {get_display_name(event.messages[0].sender_id)} forwarded to {channel_username}")
                         except Exception as e:
-                            logger.error(f"Failed to forward album: {e}")
+                            logger.error(f"Failed to forward album: {str(e)}")
 
         #@self.client.on(events.NewMessage())
         async def new_message_handler(event):
