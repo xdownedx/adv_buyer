@@ -31,4 +31,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+telegram_handler = TelegramLoggingHandler(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+logger.addHandler(telegram_handler)
+
 app = FastAPI()
